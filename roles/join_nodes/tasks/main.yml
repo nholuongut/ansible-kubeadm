@@ -1,0 +1,53 @@
+---
+- name: 'Retrieve variable from control-plane'
+  set_fact:
+    ca_info: '{{ hostvars[cp_node].ca_info }}'
+    valid_bootstrap_tokens: '{{ hostvars[cp_node].valid_bootstrap_tokens }}'
+    control_plane_endpoint: '{{ hostvars[cp_node].control_plane_endpoint }}'
+    _control_plane: '{{ _control_plane }}'
+
+- name: "Find node related IP"
+  include_role:
+    name: find_ip
+
+- name: 'List all node'
+  kubectl:
+    state: get
+    resource_type: nodes
+    kubeconfig: /etc/kubernetes/admin.conf
+  run_once: true
+  delegate_to: '{{ cp_node }}'
+  register: current_nodes
+
+- name: 'Display current node'
+  debug:
+    var: current_nodes
+    verbosity: 1
+
+- name: 'Display JoinConfig'
+  debug:
+    msg: '{{ lookup("template", role_path ~ "/templates/join_config.j2").splitlines() }}'
+    verbosity: 1
+
+- name: 'Join node that are not already joined'
+  command: >-
+    kubeadm join --config=/dev/stdin
+    {% if _control_plane and enable_kubeadm_patches|bool -%}
+      {% if target_kube_version is version("1.22", ">=") -%}
+      --patches
+      {%- else -%}
+      --experimental-patches
+      {%- endif %}
+      {{ kubeadm_patch_dir }}
+    {%- endif -%}
+  args:
+    stdin: '{{ lookup("template", role_path ~ "/templates/join_config.j2") }}'
+  register: kubeadm_node_join
+  when: ansible_nodename not in nodes_list
+  vars:
+    nodes_list: '{{ current_nodes["items"]|map(attribute="metadata.name")|list }}'
+
+- name: 'Display output of "kubeadm join"'
+  debug:
+    var: kubeadm_node_join
+    verbosity: 1

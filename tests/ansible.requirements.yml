@@ -1,0 +1,2 @@
+roles:
+  - src: git+ssh://git@gitlab.enix.io/ansible/fix-dns

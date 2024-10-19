@@ -1,0 +1,4 @@
+---
+apiserver_proxy_stack_dir: '/etc/docker-compose/apiserver-proxy'
+
+apiserver_proxy_port: 7443

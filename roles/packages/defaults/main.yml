@@ -1,0 +1,10 @@
+---
+_control_plane: false
+
+kubeadm_pkgs: true
+node_pkgs: true
+
+enforce_version: true
+
+force_apt_update: false
+pause_before_kube_pkg_install: false

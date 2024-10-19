@@ -1,0 +1,8 @@
+---
+exclude_paths:
+  - ./tests/playbooks/
+  - ./.gitlab-ci
+skip_list:
+  - '301'
+  - no-handler
+  - 'fqcn-builtins'

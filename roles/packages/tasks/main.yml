@@ -1,0 +1,78 @@
+---
+- name: 'Assert required values are set'
+  assert:
+    that:
+      # enforce_version implies that _kube_version is defined
+      - enforce_version|bool <= (target_kubeadm_version is defined)
+
+- name: 'Include OS specific variables'
+  include_vars: '{{ item }}'
+  with_fileglob:
+    - 'vars/os_{{ ansible_distribution }}_{{ ansible_distribution_release }}.yml'
+    - 'vars/os_{{ ansible_distribution }}.yml'
+    - 'vars/os_{{ ansible_os_family }}.yml'
+
+- name: 'Install repository dependencies'
+  package:
+    name: '{{ repository_dependencies }}'
+    state: present
+
+- name: 'Add kubernetes repository'
+  include_tasks: '{{ item }}'
+  with_first_found:
+    - 'kube_repo_{{ ansible_distribution }}_{{ ansible_distribution_release }}.yml'
+    - 'kube_repo_{{ ansible_distribution }}.yml'
+    - 'kube_repo_{{ ansible_os_family }}.yml'
+
+- name: 'find version of kubeadm to install'
+  pkg_version_match:
+    name: kubeadm
+    version: '{{ target_kubeadm_version }}'
+  when: target_kubeadm_version is defined
+  register: kubeadm_version
+
+- name: 'Display of complete version of kubeadm'
+  debug:
+    var: kubeadm_version
+    verbosity: 1
+
+- name: 'Compute list of packages'
+  set_fact:
+    kube_package_dict: >-
+      { {%- for pkg in pkg_list -%}
+          '{{ pkg }}':
+            '{{ enforce_version|ternary(
+                  packages_force_version[pkg]|default(kubeadm_version.version),
+                  ''
+            ) }}',
+        {%- endfor -%} }
+  vars:
+    pkg_list: >-
+      {%- set pkg_list = [] -%}
+      {%- if kubeadm_pkgs|bool -%}
+        {%- set _ = pkg_list.extend(kubeadm_packages) -%}
+      {%- endif -%}
+      {%- if node_pkgs|bool -%}
+        {%- set _ = pkg_list.extend(node_packages) -%}
+      {%- endif -%}
+      {%- if _control_plane|bool -%}
+        {%- set _ = pkg_list.extend(control_plane_packages) -%}
+      {%- endif -%}
+      {{ pkg_list|unique }}
+
+- name: 'Display package to install'
+  debug:
+    var: kube_package_dict
+
+- name: 'Pause before installing package'
+  pause:
+  when: pause_before_kube_pkg_install|bool
+
+- name: 'Install kubernetes packages'
+  include_tasks: '{{ file_tasks }}'
+  loop_control:
+    loop_var: file_tasks
+  with_first_found:
+    - 'pkg_{{ ansible_distribution }}_{{ ansible_distribution_release }}.yml'
+    - 'pkg_{{ ansible_distribution }}.yml'
+    - 'pkg_{{ ansible_os_family }}.yml'

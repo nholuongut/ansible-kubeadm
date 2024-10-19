@@ -1,0 +1,7 @@
+---
+_control_plane: false
+_skip_node_ip: false
+
+kube_apiserver_advertise_cidr: ''
+kubelet_node_ip_cidr: ''
+kube_control_plane_cidr: ''

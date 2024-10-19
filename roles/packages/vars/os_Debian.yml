@@ -1,0 +1,27 @@
+---
+kubernetes_repository:
+  gpg_url: 'https://packages.cloud.google.com/apt/doc/apt-key.gpg'
+  repo_url: 'deb https://apt.kubernetes.io/ kubernetes-xenial main'
+
+repository_dependencies:
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+
+kubeadm_packages:
+  - kubeadm
+  - kubectl  # As a dependency but without version specification
+  - kubernetes-cni
+
+node_packages:
+  - kubelet
+  - kubernetes-cni
+
+control_plane_packages:
+  - kubectl
+
+packages_force_version:
+  kubernetes-cni:
+
+python2_openssl: python-openssl
+python3_openssl: python3-openssl
